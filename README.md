@@ -221,7 +221,7 @@ Note: settings starting with `AZURE_SEARCH` are only needed when using Azure Ope
 |UI_TITLE|Contoso| Chat title (left-top) and page title (HTML)
 |UI_LOGO|| Logo (left-top). Defaults to Contoso logo. Configure the URL to your logo image to modify.
 |UI_CHAT_LOGO|| Logo (chat window). Defaults to Contoso logo. Configure the URL to your logo image to modify.
-|UI_CHAT_TITLE|Start chatting with Quality Clouds!| Title (chat window)
+|UI_CHAT_TITLE|Start chatting| Title (chat window)
 |UI_CHAT_DESCRIPTION|This chatbot is configured to answer your questions| Description (chat window)
 |UI_FAVICON|| Defaults to Contoso favicon. Configure the URL to your favicon to modify.
 |UI_SHOW_SHARE_BUTTON|True|Share button (right-top)
