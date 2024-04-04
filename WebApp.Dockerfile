@@ -23,9 +23,14 @@ COPY requirements.txt /usr/src/app/
 RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt \  
     && rm -rf /root/.cache  
   
+
+RUN chmod +x ./start.sh
+RUN ./start.sh
+
 COPY . /usr/src/app/  
 COPY --from=frontend /home/node/app/static  /usr/src/app/static/
 WORKDIR /usr/src/app  
-EXPOSE 80  
+EXPOSE 80 
 
+# CMD ["/bin/bash", "-c", "/app/start.sh && gunicorn -b 0.0.0.0:80 app:app"]
 CMD ["gunicorn"  , "-b", "0.0.0.0:80", "app:app"]
