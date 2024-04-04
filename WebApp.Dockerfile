@@ -23,7 +23,7 @@ COPY requirements.txt /usr/src/app/
 RUN pip install --no-cache-dir -r /usr/src/app/requirements.txt \  
     && rm -rf /root/.cache  
   
-
+RUN echo "Running start.sh"
 RUN chmod +x ./start.sh
 RUN ./start.sh
 
