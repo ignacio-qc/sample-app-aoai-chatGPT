@@ -141,6 +141,50 @@ const Chat = () => {
     appStateContext?.dispatch({ type: 'SET_ANSWER_EXEC_RESULT', payload: { answerId: answerId, exec_result: exec_results } })
   }
 
+    // Define the custom tool call function here
+  const callCustomTool = (toolInput: string): string => {
+      return "true";
+    };
+  
+  const customTool = {
+    type: "function",
+    function: {
+      name: "callCustomTool",
+      description: "Will return true if the user id has a valid api key",
+      parameters: {
+        type: "object",
+        properties: {
+          toolInput: {
+            type: "string",
+            description: "The user id for which to check for a valid api key"
+          }
+        },
+        required: ["toolInput"]
+      }
+    }
+    };
+
+  const tools = [
+      {
+          "type": "function",
+          "function": {
+              "name": "callCustomTool",
+              "description": "A custom tool that always returns 'true'",
+              "parameters": {
+                  "type": "object",
+                  "properties": {
+                      "toolInput": {
+                          "type": "string",
+                          "description": "Any input string (will be ignored)"
+                      }
+                  },
+                  "required": ["toolInput"]
+              }
+          }
+      }
+  ]
+    
+
   const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage, conversationId?: string) => {
     if (typeof resultMessage.content === "string" && resultMessage.content.includes('all_exec_results')) {
       const parsedExecResults = JSON.parse(resultMessage.content) as AzureSqlServerExecResults
@@ -167,6 +211,30 @@ const Chat = () => {
     }
 
     if (resultMessage.role === TOOL) toolMessage = resultMessage
+
+    if (resultMessage.role === 'function' && resultMessage.content === "string" && resultMessage.content.includes('custom_tool')) {
+      const toolResult = callCustomTool(resultMessage.content);
+      toolMessage = {
+        id: uuid(),
+        role: TOOL,
+        content: toolResult,
+        date: new Date().toISOString()
+      };
+      console.log("*****************************")
+      setMessages([...messages, toolMessage]);
+
+      // // After processing the tool result
+      // const secondRequest: ConversationRequest = {
+      //   messages: [...conversation.messages, toolMessage].filter(answer => answer.role !== ERROR),
+      //   // Note: We're not including the 'tools' property here
+      // };
+
+      // // Make the second API call
+      // const secondResponse = await conversationApi(secondRequest, abortController.signal);
+      // // Process the second response similarly to the first one
+
+    }
+    
 
     if (!conversationId) {
       isEmpty(toolMessage)
@@ -220,7 +288,9 @@ const Chat = () => {
     setMessages(conversation.messages)
 
     const request: ConversationRequest = {
-      messages: [...conversation.messages.filter(answer => answer.role !== ERROR)]
+      messages: [...conversation.messages.filter(answer => answer.role !== ERROR)],
+        tools: [customTool],
+        tool_choice: "auto"
     }
 
     let result = {} as ChatResponse
@@ -334,12 +404,17 @@ const Chat = () => {
       } else {
         conversation.messages.push(userMessage)
         request = {
-          messages: [...conversation.messages.filter(answer => answer.role !== ERROR)]
+          messages: [...conversation.messages.filter(answer => answer.role !== ERROR)],
+          tools: [customTool],
+          tool_choice: "auto"
+
         }
       }
     } else {
       request = {
-        messages: [userMessage].filter(answer => answer.role !== ERROR)
+        messages: [userMessage].filter(answer => answer.role !== ERROR),
+        tools: [customTool],
+        tool_choice: "auto"
       }
       setMessages(request.messages)
     }

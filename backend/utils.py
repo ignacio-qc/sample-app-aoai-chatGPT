@@ -85,6 +85,8 @@ def format_non_streaming_response(chatCompletion, history_metadata, apim_request
         "history_metadata": history_metadata,
         "apim-request-id": apim_request_id,
     }
+    
+    print(f"""length of completion choices: {chatCompletion.choices} """)
 
     if len(chatCompletion.choices) > 0:
         message = chatCompletion.choices[0].message
@@ -116,31 +118,47 @@ def format_stream_response(chatCompletionChunk, history_metadata, apim_request_i
         "history_metadata": history_metadata,
         "apim-request-id": apim_request_id,
     }
+    
+    print(response_obj)
 
     if len(chatCompletionChunk.choices) > 0:
         delta = chatCompletionChunk.choices[0].delta
+        
         if delta:
-            if hasattr(delta, "context"):
-                messageObj = {"role": "tool", "content": json.dumps(delta.context)}
-                response_obj["choices"][0]["messages"].append(messageObj)
+            print("we have delta")
+            # Process tool calls if present
+            if hasattr(delta, "tool_calls") and delta.tool_calls:
+                print("we have tool calls")
+                for tool_call in delta.tool_calls:
+                    messageObj = {
+                        "role": "tool",
+                        "content": json.dumps({
+                            "function_name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments
+                        })  # Ensure content is a string
+                    }
+                    response_obj["choices"][0]["messages"].append(messageObj)
                 return response_obj
-            if delta.role == "assistant" and hasattr(delta, "context"):
-                messageObj = {
-                    "role": "assistant",
-                    "context": delta.context,
-                }
-                response_obj["choices"][0]["messages"].append(messageObj)
-                return response_obj
-            else:
-                if delta.content:
+
+            # Process assistant messages
+            if delta.role == "assistant":
+                print("we have assistant")
+                if hasattr(delta, "content") and delta.content:
                     messageObj = {
                         "role": "assistant",
                         "content": delta.content,
                     }
                     response_obj["choices"][0]["messages"].append(messageObj)
-                    return response_obj
+                elif hasattr(delta, "context"):
+                    messageObj = {
+                        "role": "assistant",
+                        "context": delta.context,
+                    }
+                    response_obj["choices"][0]["messages"].append(messageObj)
+    
+        print(response_obj)
+    return response_obj
 
-    return {}
 
 
 def format_pf_non_streaming_response(

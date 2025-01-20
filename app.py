@@ -206,7 +206,11 @@ async def init_cosmosdb_client():
     return cosmos_conversation_client
 
 
+
+
 def prepare_model_args(request_body, request_headers):
+    
+    
     request_messages = request_body.get("messages", [])
     messages = []
     if not app_settings.datasource:
@@ -251,7 +255,25 @@ def prepare_model_args(request_body, request_headers):
         "stop": app_settings.azure_openai.stop_sequence,
         "stream": app_settings.azure_openai.stream,
         "model": app_settings.azure_openai.model,
-        "user": user_json
+        "user": user_json,
+        "tools": [{
+    "type": "function",
+    "function": {
+      "name": "callCustomTool",
+      "description": "Will return true if the user id has a valid api key",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "toolInput": {
+            "type": "string",
+            "description": "The user id for which to check for a valid api key"
+          }
+        },
+        "required": ["toolInput"]
+      }
+    }
+    }],  # Add this line
+        "tool_choice": request_body.get("tool_choice", "auto")  # Add this line
     }
 
     if app_settings.datasource:
@@ -297,7 +319,7 @@ def prepare_model_args(request_body, request_headers):
                         "embedding_dependency"
                     ]["authentication"][field] = "*****"
 
-    logging.debug(f"REQUEST BODY: {json.dumps(model_args_clean, indent=4)}")
+    logging.debug(f"*****REQUEST BODY: {json.dumps(model_args_clean, indent=4)}")
 
     return model_args
 
@@ -339,16 +361,20 @@ async def send_chat_request(request_body, request_headers):
     filtered_messages = []
     messages = request_body.get("messages", [])
     for message in messages:
-        if message.get("role") != 'tool':
+        if message.get("role") in ['user', 'assistant', 'tool']:
             filtered_messages.append(message)
             
     request_body['messages'] = filtered_messages
     model_args = prepare_model_args(request_body, request_headers)
+    
+    print("111111111111")
 
     try:
         azure_openai_client = await init_openai_client()
         raw_response = await azure_openai_client.chat.completions.with_raw_response.create(**model_args)
+        print("22222222222")
         response = raw_response.parse()
+        print(response)
         apim_request_id = raw_response.headers.get("apim-request-id") 
     except Exception as e:
         logging.exception("Exception in send_chat_request")
@@ -370,6 +396,8 @@ async def complete_chat_request(request_body, request_headers):
     else:
         response, apim_request_id = await send_chat_request(request_body, request_headers)
         history_metadata = request_body.get("history_metadata", {})
+        print("333333333")
+        print(response)
         return format_non_streaming_response(response, history_metadata, apim_request_id)
 
 
@@ -391,6 +419,8 @@ async def conversation_internal(request_body, request_headers):
             response = await make_response(format_as_ndjson(result))
             response.timeout = None
             response.mimetype = "application/json-lines"
+            print("5555555")
+            print(response)
             return response
         else:
             result = await complete_chat_request(request_body, request_headers)
